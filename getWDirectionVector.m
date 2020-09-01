@@ -1,5 +1,5 @@
-function [ dI, GInv_Cell_Array] = getWDirectionVector( GInv_Cell_Array, zI, D_Cell_Array, W, Wn, Active_Columns, Add_Column_Flag, Changed_Column_Index, Changed_Active_Column_Index, Data_Tensor_Dimensions, Tensor_Dimensions, step_size, Precision_Order, GPU_Computing ) 
-%getWDirectionVector v1.0
+function [ dI, GInv_Cell_Array] = getWDirectionVector( GInv_Cell_Array, zI, D_Cell_Array, w, q, Active_Columns, Add_Column_Flag, Changed_Column_Index, Changed_Active_Column_Index, Data_Tensor_Dimensions, Tensor_Dimensions, step_size, Precision_Order, GPU_Computing ) 
+%getWDirectionVector v1.1
 %Author : Ishan Wickramsingha
 %Date : 2020/08/24
 
@@ -105,12 +105,12 @@ if Add_Column_Flag
 
     factor_column_indices = getKroneckerFactorColumnIndices( order, Changed_Column_Index, Tensor_Dimensions );
     da = getKroneckerMatrixColumn( D_Cell_Array, factor_column_indices, local_gpu_Computing ); 
-    wda = full(W*da*Wn(Changed_Column_Index,Changed_Column_Index));
+    wda = full(w.*da*q(Changed_Column_Index));
     
     Wda = reshape(wda,Data_Tensor_Dimensions); % u= W*da
      
     Ga = fullMultilinearProduct( Wda, D_Cell_Array, true, GPU_Computing );     % V= D'*W*Da   
-    ga = Wn*vec(Ga);
+    ga = q.*vec(Ga);
     
     ga = ga(Active_Columns);
 

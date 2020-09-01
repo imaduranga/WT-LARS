@@ -4,7 +4,7 @@
 clear;clc;
 
 data = 'flower_weighted'; 
-save_data = true;
+save_data = false;
 
 Tolerence = 0.01;               %0.075 tolerence
 X = 0;                          %Previous Solution

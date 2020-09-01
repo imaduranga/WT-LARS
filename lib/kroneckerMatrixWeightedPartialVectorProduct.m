@@ -1,4 +1,4 @@
-function [ y ] = kroneckerMatrixWeightedPartialVectorProduct( Factor_Matrices, Active_Columns, Active_Factor_Column_Indices, x, W, Use_Transpose, GPU_Computing )
+function [ y ] = kroneckerMatrixWeightedPartialVectorProduct( Factor_Matrices, Active_Columns, Active_Factor_Column_Indices, x, w, Use_Transpose, GPU_Computing )
 %kroneckerMatrixPartialVectorProduct v1.1
 %Author : Ishan Wickramsingha
 %Date : 2019/10/31
@@ -59,8 +59,8 @@ function [ y ] = kroneckerMatrixWeightedPartialVectorProduct( Factor_Matrices, A
     %Set vector vx to have x as only non-zero elements
     column_length = prod(dim_array);
     
-    if isempty(W) 
-        W = speye(column_length);
+    if isempty(w) 
+        w = ones(column_length);
     end
     
     if GPU_Computing
@@ -75,7 +75,7 @@ function [ y ] = kroneckerMatrixWeightedPartialVectorProduct( Factor_Matrices, A
         vx(Active_Columns) = x;
     end
     
-    vx = W*vx;
+    vx = w.*vx;
     
     % Reshape vx to a tensor format
     if kronMatrixCount > 1

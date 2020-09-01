@@ -1,7 +1,8 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.0.0-alpha
+%WTLARS v1.1.0-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
+%Modified : 2020/09/01
 
 %MATLAB Version : MATLAB R2017b and above
 
@@ -180,11 +181,11 @@ end
 fprintf('Initializing %s... \n', algorithm);
 
 % W = S'S
-W = diag(sparse(w));
-S = sqrtm(W);
+s = sqrt(w);
+
 
 % %Normalize Y
-ys = S*vec(Y);
+ys = s.*vec(Y);
 Y = reshape(ys,tensor_dim_array);
 
 tensor_norm = norm(vec(Y)); 
@@ -204,15 +205,22 @@ if nargout >= 7
 end
 
 
-%Calculate the normalization Matrix
+%Calculate the normalization Matrix Q = diag(q)
 fprintf(' \nCalculating the normalization matrix for %d columns. \n', total_column_count);
-Q = speye(total_column_count);    % Normalization Matrix Q
-for k = 1:total_column_count    
-    factor_column_indices = getKroneckerFactorColumnIndices( order, k, core_tensor_dimensions );
-    dk = getKroneckerMatrixColumn( D_Cell_Array, factor_column_indices, GPU_Computing ); 
-    Q(k,k) = gather(1/norm(S*dk));
+q = zeros(total_column_count,1);
+if GPU_Computing
+   q = gpuArray(q); 
 end
-
+parfor k = 1:total_column_count    
+    factor_column_indices = getKroneckerFactorColumnIndices( order, k, core_tensor_dimensions );
+    q(k) = 1/norm(s.*getKroneckerMatrixColumn( D_Cell_Array, factor_column_indices, GPU_Computing )); 
+%     if rem(k,1000)==0
+%         fprintf('Normalizing Column = %d out of %d Precentage Completed = %.2f%% Time = %.3f\n', k, total_column_count, (100*k)/total_column_count, toc);
+%     end
+    if rem(k,1000)==0
+        fprintf('Normalizing Column = %d out of %d \n', k, total_column_count);
+    end    
+end
 
 
 %Calculate Separable Gram Matrices
@@ -246,13 +254,13 @@ if nnz(X) > 0
     %If a previsous solution exists start from X 
     fprintf('Start TLARS calculations using the existing solution \n');
     
-    wnx = Q*vec( X);
+    wnx = q.*vec( X);
     WNX = reshape(wnx,core_tensor_dimensions);    
         
     %Calculate the residual tensor
     AX = fullMultilinearProduct( WNX, D_Cell_Array, false, GPU_Computing );
     
-    axs = S*vec(AX);
+    axs = s.*vec(AX);
     AXS = reshape(axs,tensor_dim_array);
     R = Y - AXS;
     r = vec(R);
@@ -260,7 +268,7 @@ if nnz(X) > 0
     clear AX;    
    
      %Calculate the coeffiecint tensor and vectorize
-    rw = S*vec(R);
+    rw = s.*vec(R);
     Rw = reshape(rw,tensor_dim_array);
     C = fullMultilinearProduct( Rw, D_Cell_Array, true, GPU_Computing ); % c = B'*r;
     c = gather(vec(C));
@@ -284,7 +292,7 @@ if nnz(X) > 0
     clear GI
     
     if Plot
-        Ax = S*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, x, Q, false, GPU_Computing );
+        Ax = s.*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, x, q, false, GPU_Computing );
         show_tlars( Ax, Y, tensor_norm, norm_r_result, tensor_dim_array );  
     end
     
@@ -293,16 +301,19 @@ else
     %Calculate the initial correlation vector c
     fprintf('Calculating the Initial Correlation Vector. \n');
     
-    ys = S*vec(Y);
+    ys = s.*vec(Y);
     Ys = reshape(ys,tensor_dim_array);
 
     C = fullMultilinearProduct( Ys, D_Cell_Array, true, GPU_Computing ); % c = B'*r;
-    c = Q*gather(vec(C));
+    c = q.*gather(vec(C));
     c(column_mask_indices) = 0;   %Apply column mask to the correlation vector
-    c = round(c, precision_order);
+    c = gpuRound(c, precision_order);
     clear C;
 
     [lambda,changed_dict_column_index] = max(abs(c)); %Initial lambda = max(c)
+    
+    changed_dict_column_index = gather(changed_dict_column_index);
+    lambda = gather(lambda);
 
     % Set initial active column vector
     add_column_flag = 1;
@@ -337,7 +348,7 @@ for t=1:Iterations
     %Calculate the inverse of the Gram Matrix for the active set. If A is the active columns matrix then Gramian GI = A'*A
     if length(zI) > 1 && ~is_orthogonal
         try
-            [ dI, GInv_Cell_Array ] = getWDirectionVector(GInv_Cell_Array, zI, D_Cell_Array, W, Q, Active_Columns, add_column_flag, changed_dict_column_index, changed_active_column_index, tensor_dim_array, core_tensor_dimensions, step_size, precision_order, GPU_Computing );
+            [ dI, GInv_Cell_Array ] = getWDirectionVector(GInv_Cell_Array, zI, D_Cell_Array, w, q, Active_Columns, add_column_flag, changed_dict_column_index, changed_active_column_index, tensor_dim_array, core_tensor_dimensions, step_size, precision_order, GPU_Computing );
 
         catch e        
             % In casee of an exception, gather GInv from GPU
@@ -347,7 +358,7 @@ for t=1:Iterations
                     GInv_Cell_Array{i} = gather(GInv_Cell_Array{i});
                 end
                 fprintf(2,'Exception Occured. Disabling GPU Computing.\nException = %s \n', getReport(e));
-                [ dI, GInv_Cell_Array ] = getWDirectionVector(GInv_Cell_Array, zI, D_Cell_Array, W, Active_Columns, add_column_flag, changed_dict_column_index, changed_active_column_index, core_tensor_dimensions, step_size, precision_order, GPU_Computing );
+                [ dI, GInv_Cell_Array ] = getWDirectionVector(GInv_Cell_Array, zI, D_Cell_Array, w, q, Active_Columns, add_column_flag, changed_dict_column_index, changed_active_column_index, core_tensor_dimensions, step_size, precision_order, GPU_Computing );
             end
         end  
     elseif is_orthogonal
@@ -359,12 +370,12 @@ for t=1:Iterations
 
     %Create vector v by selecting equivalent active columns from the Gramian G and multiplying with dI 
     
-     u = kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, dI, Q, false, GPU_Computing );% u= A*dI
-     uw = W*u;
+     u = kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, dI, q, false, GPU_Computing );% u= A*dI
+     uw = w.*u;
      Uw = reshape(uw,tensor_dim_array); % u= W*A*dI
      
      V = fullMultilinearProduct( Uw, D_Cell_Array, true, GPU_Computing );     % V= D'*W*A*dI
-     v = Q*vec(V); 
+     v = q.*vec(V); 
      v(column_mask_indices) = 0; 
      v = gpuRound(v, precision_order);
      
@@ -432,8 +443,8 @@ for t=1:Iterations
     end
 
     %Update the norm of the residual
-    ad = gather(kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, dI, Q, false, GPU_Computing));%v = A*dI; 
-    r = r - delta*S*ad; %r = r - delta*S*A*dI;
+    ad = gather(kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, dI, q, false, GPU_Computing));%v = A*dI; 
+    r = r - delta*s.*ad; %r = r - delta*S*A*dI;
     nr = norm(r);      
     norm_R = [norm_R; nr];
     
@@ -454,7 +465,7 @@ for t=1:Iterations
     
         %Plot the current result
     if Plot && ( Debug_Mode || rem(t,plot_frequency) == 1 )
-        Ax = S*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, Q, false, GPU_Computing );
+        Ax = s.*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, q, false, GPU_Computing );
         show_tlars( Ax, Y, tensor_norm, norm_R, norm_r_result, tensor_dim_array );  
     end   
     
@@ -518,7 +529,7 @@ for t=1:Iterations
             X = constructCoreTensor(Active_Columns, x, core_tensor_dimensions);
             [x,X,Active_Columns,~,lambda,activeColumnsCount]=gather(x,X,Active_Columns,nr,lambda,length(Active_Columns));
             
-            Ax = S*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, Q, false, GPU_Computing );
+            Ax = s.*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, q, false, GPU_Computing );
             
             if Debug_Mode && isdir(Path)
                 
@@ -564,7 +575,7 @@ end
 if nargout >=6    
 %     x1 = x + lambda*dI; % Construct final result
     x1 = x;
-    Ax1 = S*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x1, Q, false, GPU_Computing );  
+    Ax1 = s.*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x1, q, false, GPU_Computing );  
     varargout{6} = Ax1;
 end
 if nargout >=7   
@@ -573,7 +584,7 @@ end
 
 if Plot || Debug_Mode
     
-    Ax = S*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, Q, false, GPU_Computing );        
+    Ax = s.*kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, x, q, false, GPU_Computing );        
     
     if Plot
         show_tlars( Ax, Y, tensor_norm, norm_R, norm_r_result, tensor_dim_array );
