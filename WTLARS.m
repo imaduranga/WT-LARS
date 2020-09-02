@@ -1,5 +1,5 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.2.0-alpha
+%WTLARS v1.2.1-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
 %Modified : 2020/09/01
@@ -142,7 +142,7 @@ plot_frequency = 500; %After every 100 iterations plot norm_R and image
 step_size = 2000;
 precision = Precision_factor*eps;
 precision_order = round(abs(log10(precision)));
-is_orthogonal = true;
+is_orthogonal = false;
 
 x = 0;
 Active_Columns = [];
@@ -226,15 +226,15 @@ q = 1./sqrt(vec(fullMultilinearProduct( reshape(w,tensor_dim_array), cellfun(@(X
 % end
 
 
-%Calculate Separable Gram Matrices
-fprintf('Calculating Separable Gram Matrices. \n');
-
-for n = 1:order
-    gramian_cell_array{n} = round(D_Cell_Array{n}'*D_Cell_Array{n},precision_order);
-    if is_orthogonal && ~isequal(round(gramian_cell_array{n},10),round(eye(tensor_dim_array(n)),10))
-       is_orthogonal = false; 
-    end
-end
+% %Calculate Separable Gram Matrices
+% fprintf('Calculating Separable Gram Matrices. \n');
+% 
+% for n = 1:order
+%     gramian_cell_array{n} = round(D_Cell_Array{n}'*D_Cell_Array{n},precision_order);
+%     if is_orthogonal && ~isequal(round(gramian_cell_array{n},10),round(eye(tensor_dim_array(n)),10))
+%        is_orthogonal = false; 
+%     end
+% end
 
 %Prepare the column mask vector
 if strcmp(Mask_Type,'KR')   

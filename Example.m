@@ -1,4 +1,4 @@
-%Run TLARS v1.2.0-beta
+%Run WTLARS v1.0.0-beta
 %Author : Ishan Wickramsingha
 %Date : 2019/10/18
 clear;clc;
