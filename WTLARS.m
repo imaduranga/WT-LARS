@@ -1,5 +1,5 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.1.0-alpha
+%WTLARS v1.2.0-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
 %Modified : 2020/09/01
@@ -207,20 +207,23 @@ end
 
 %Calculate the normalization Matrix Q = diag(q)
 fprintf(' \nCalculating the normalization matrix for %d columns. \n', total_column_count);
-q = zeros(total_column_count,1);
-if GPU_Computing
-   q = gpuArray(q); 
-end
-parfor k = 1:total_column_count    
-    factor_column_indices = getKroneckerFactorColumnIndices( order, k, core_tensor_dimensions );
-    q(k) = 1/norm(s.*getKroneckerMatrixColumn( D_Cell_Array, factor_column_indices, GPU_Computing )); 
+
+q = 1./sqrt(vec(fullMultilinearProduct( reshape(w,tensor_dim_array), cellfun(@(X) X.^2,D_Cell_Array,'UniformOutput',false), true, GPU_Computing )));
+
+% q = zeros(total_column_count,1);
+% if GPU_Computing
+%    q = gpuArray(q); 
+% end
+% parfor k = 1:total_column_count    
+%     factor_column_indices = getKroneckerFactorColumnIndices( order, k, core_tensor_dimensions );
+%     q(k) = 1/norm(s.*getKroneckerMatrixColumn( D_Cell_Array, factor_column_indices, GPU_Computing )); 
+% %     if rem(k,1000)==0
+% %         fprintf('Normalizing Column = %d out of %d Precentage Completed = %.2f%% Time = %.3f\n', k, total_column_count, (100*k)/total_column_count, toc);
+% %     end
 %     if rem(k,1000)==0
-%         fprintf('Normalizing Column = %d out of %d Precentage Completed = %.2f%% Time = %.3f\n', k, total_column_count, (100*k)/total_column_count, toc);
-%     end
-    if rem(k,1000)==0
-        fprintf('Normalizing Column = %d out of %d \n', k, total_column_count);
-    end    
-end
+%         fprintf('Normalizing Column = %d out of %d \n', k, total_column_count);
+%     end    
+% end
 
 
 %Calculate Separable Gram Matrices
@@ -286,7 +289,7 @@ if nnz(X) > 0
     fprintf('Number of Active_Columns = %d norm(r) = %d lambda = %d \n', length(Active_Columns),norm(r),lambda);
     
     fprintf('Obtaining the inverse of the Gramian \n');
-    GI = getGramian( gramian_cell_array, Active_Columns, GPU_Computing );
+    GI = getWeightedGramian( D_Cell_Array, w, q, Active_Columns, GPU_Computing );
     GInv = inv(GI);
     
     clear GI
