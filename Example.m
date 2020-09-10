@@ -4,9 +4,9 @@
 clear;clc;
 
 data = 'flower_weighted'; 
-save_data = false;
+save_data = true;
 
-Tolerence = 0.01;               %0.075 tolerence
+Tolerence = 0.001;               %0.075 tolerence
 X = 0;                          %Previous Solution
 L0_Mode = false;                 %True for L0 or false for L1 Minimization
 Mask_Type = 'KP';               %'KP': Kronecker Product, 'KR': Khatri-Rao Product 
@@ -16,7 +16,8 @@ Debug_Mode = false;             %Save TLARS variable into a .mat file given in p
 Path = '.\example\';            %Path to save all variables in debug mode
 Active_Columns_Limit = 1000;   %Limit of active columns (Depends on the GPU)
 Iterations = 1e6;              %Maximum Number of iteratons to run
-Precision_factor = 10;          %Round to e^-20
+Precision_factor = 10;          %eps*20
+str = '';
 
 algorithm = 'WTLARS';
 %%
