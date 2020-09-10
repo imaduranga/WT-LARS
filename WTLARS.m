@@ -1,5 +1,5 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.3.1-alpha
+%WTLARS v1.3.2-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
 %Modified : 2020/09/01
@@ -78,8 +78,11 @@ Precision_factor = 10;          %5*eps - Round to 5 times the default machine pr
 
 %Validate
 validateattributes(D_Cell_Array,{'cell'},{'nonempty'},algorithm,'D_cell_Array',2);
-validateattributes(Y,{'numeric'},{'nonempty','ndims', length(D_Cell_Array)},algorithm,'Y',1);
-
+if length(D_Cell_Array)>1
+    validateattributes(Y,{'numeric'},{'nonempty','ndims', length(D_Cell_Array)},algorithm,'Y',1);
+else
+    validateattributes(Y,{'numeric'},{'nonempty'},algorithm,'Y',1);
+end
 validateattributes(w,{'numeric'},{'nonempty','numel', numel(Y)},algorithm,'w',3);
 validateattributes(Tolerence,{'numeric'},{'nonnegative','<=', 1},algorithm,'Tolerence',3);
 
