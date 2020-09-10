@@ -1,5 +1,5 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.2.1-alpha
+%WTLARS v1.3.1-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
 %Modified : 2020/09/01
@@ -74,7 +74,7 @@ Debug_Mode = false;            %Save TLARS interal data
 Path = '';                     %Path to save all variables in debug mode
 Active_Columns_Limit = 1e+6;   %Limit of active columns (Sparsity)
 Iterations = numel(Y);         %Maximum Number of iteratons to run
-Precision_factor = 5;          %5*eps - Round to 5 times the default machine precision(eps)
+Precision_factor = 10;          %5*eps - Round to 5 times the default machine precision(eps)
 
 %Validate
 validateattributes(D_Cell_Array,{'cell'},{'nonempty'},algorithm,'D_cell_Array',2);
@@ -426,7 +426,7 @@ for t=1:Iterations
     end        
     
     
-    delta = round(delta*10^precision_order)*10^-precision_order;
+    delta = gpuRound(delta,precision_order);
 
     %% Compute the solution x and parameters for next iteration
 
@@ -438,12 +438,10 @@ for t=1:Iterations
 
     %Update the solution x
     x = x + delta*dI;    
-    lambda = lambda - delta; %lambda = max(c(active_columns));   
+    lambda = gpuRound(lambda - delta, precision_order);  %lambda = max(c(active_columns));   
     c = c - delta*v; %c = B'*r;
     
-    if rem(t,1000) == 1
-       c(Active_Columns) = mean(abs(c(Active_Columns)))*sign(c(Active_Columns));
-    end
+    c(Active_Columns) = lambda*sign(c(Active_Columns));
 
     %Update the norm of the residual
     ad = gather(kroneckerMatrixWeightedPartialVectorProduct( D_Cell_Array, Active_Columns, active_factor_column_indices, dI, q, false, GPU_Computing));%v = A*dI; 
@@ -520,9 +518,9 @@ for t=1:Iterations
     end
      
     if Debug_Mode 
-        fprintf('%s %s t= %d norm(r)= %d nrr= %d active columns= %d indices= %s %s column= %d %s Time= %.3f\n', algorithm, str, t,nr, nr_result, length(Active_Columns), join(string(columnIndices)),columnOperationStr,changed_dict_column_index,gpu_usage,toc);
+        fprintf('%s %s t= %d norm(r)= %d active columns= %d indices= %s %s column= %d %s Time= %.3f\n', algorithm, str, t,nr, length(Active_Columns), join(string(columnIndices)),columnOperationStr,changed_dict_column_index,gpu_usage,toc);
     else
-        fprintf('%s %s t= %d norm(r)= %d nrr= %d active columns= %d %s column= %d %s Time= %.3f\n',algorithm, str, t,  nr, nr_result, length(Active_Columns), columnOperationStr, changed_dict_column_index, gpu_usage, toc);        
+        fprintf('%s %s t= %d norm(r)= %d active columns= %d %s column= %d %s Time= %.3f\n',algorithm, str, t,  nr, length(Active_Columns), columnOperationStr, changed_dict_column_index, gpu_usage, toc);        
     end
 
     %Handle exception

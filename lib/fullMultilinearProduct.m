@@ -1,7 +1,8 @@
 function [ X ] = fullMultilinearProduct( X, Factor_Matrices, Use_Transpose, GPU_Computing )
-%fullMultilinearProduct v1.2
+%fullMultilinearProduct v1.3
 %Author : Ishan Wickramsingha
-%Date : 2019/10/31
+%Date : 2020/10/31
+%Modified : 2020/08/25
 
 %Fullmultilinear product of the tensor X with factor matrices in the Factor_Matrices using both GPU computing and CPU computing.
 %If Use_Transpose is true use the transpose of each factor matrix for the kronekcer product.
@@ -87,11 +88,13 @@ for n=1:factor_count
     end
     
     %Obtain N-D Tensor
-    X = reshape(Xn,[sz(n) sz(1:n-1) sz(n+1:end)]);
-    
+        
     if order > 1
+        X = reshape(Xn,[sz(n) sz(1:n-1) sz(n+1:end)]);
         column_order = [2:n 1 n+1:factor_count];
         X = permute(X,column_order);
+    else
+        X = reshape(Xn,[sz(n) 1]);
     end
     
 end
