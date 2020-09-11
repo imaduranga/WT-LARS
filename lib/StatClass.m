@@ -1,11 +1,11 @@
 %Author : Ishan Wickramsingha
 %Date : 2019/10/18
+%Modified : 2020/09/11
 classdef StatClass
         
     properties
         iteration
         residualNorm
-        reconErrorNorm
         column
         columnIndices
         addColumn
@@ -16,11 +16,10 @@ classdef StatClass
     end
     
     methods
-        function obj = StatClass( iteration,residualNorm,reconErrorNorm,column,columnIndices,addColumn,activeColumnsCount,delta,lambda,time  )
+        function obj = StatClass( iteration,residualNorm,column,columnIndices,addColumn,activeColumnsCount,delta,lambda,time  )
 
             obj.iteration = iteration;
             obj.residualNorm = residualNorm;
-            obj.reconErrorNorm = reconErrorNorm;
             obj.column = column;                        
             obj.columnIndices = columnIndices;
             obj.addColumn = addColumn;
@@ -32,7 +31,6 @@ classdef StatClass
        function s = saveobj(obj)
                 s.iteration = obj.iteration;
                 s.residualNorm = obj.residualNorm;
-                s.reconErrorNorm = obj.reconErrorNorm;
                 s.column = obj.column;
                 s.columnIndices = obj.columnIndices;
                 s.addColumn = obj.addColumn;
@@ -45,7 +43,7 @@ classdef StatClass
     methods (Static)
       function obj = loadobj(s)
          if isstruct(s)
-            obj = StatClass(s.iteration,s.residualNorm,s.reconErrorNorm,s.column,s.columnIndices,s.addColumn,s.activeColumnsCount,s.delta,s.lambda,s.time);
+            obj = StatClass(s.iteration,s.residualNorm,s.column,s.columnIndices,s.addColumn,s.activeColumnsCount,s.delta,s.lambda,s.time);
          else            
             obj = s;
          end

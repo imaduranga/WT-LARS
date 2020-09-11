@@ -1,8 +1,8 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.3.2-alpha
+%WTLARS v1.3.3-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
-%Modified : 2020/09/01
+%Modified Date : 2020/09/11
 
 %MATLAB Version : MATLAB R2017b and above
 
@@ -154,7 +154,6 @@ column_mask_indices = [];
 add_column_flag = -1;
 changed_dict_column_index = -1;
 changed_active_column_index = -1;
-prev_t_added_dict_column_index = -1;
 total_column_count = -1;
 columnOperationStr = 'add';
 
@@ -279,7 +278,7 @@ if nnz(X) > 0
     C = fullMultilinearProduct( Rw, D_Cell_Array, true, GPU_Computing ); % c = B'*r;
     c = gather(vec(C));
     c(column_mask_indices) = 0;   %Apply column mask to the correlation vector
-    c = round(c, precision_order);
+    c = gpuRound(c, precision_order);
     clear R C;
     
     [lambda,changed_dict_column_index] = max(abs(c));
@@ -324,8 +323,7 @@ else
     % Set initial active column vector
     add_column_flag = 1;
     Active_Columns = changed_dict_column_index;
-    changed_active_column_index = 1;
-    prev_t_added_dict_column_index = changed_dict_column_index;   
+    changed_active_column_index = 1;  
     
     columnIndices = getKroneckerFactorColumnIndices( order, changed_dict_column_index, core_tensor_dimensions );
     active_factor_column_indices=cellfun(@(x,y) sort(unique([x y])), active_factor_column_indices, columnIndices, 'UniformOutput', false);   
@@ -421,7 +419,7 @@ for t=1:Iterations
         [min_delta_minus, col_idx3]             = min(delta_minus);
         min_idx3                                = Active_Columns(col_idx3);
 
-        if length(Active_Columns) > 1 && min_idx3 ~= prev_t_added_dict_column_index && min_delta_minus < delta
+        if length(Active_Columns) > 1 && min_delta_minus < delta
             changed_dict_column_index = gather(min_idx3);
             delta = full(min_delta_minus);
             add_column_flag = 0;
@@ -435,7 +433,7 @@ for t=1:Iterations
 
     % Check for invalid conditions
     if lambda < delta || lambda < 0 || delta < 0    
-        fprintf('%s Stopped at: norm(r) = %d lambda = %d  delta = %d Time = %.3f\n',algorithm,nr,lambda,delta,toc);
+        fprintf('%s Stopped at: t = %d  norm(r) = %d lambda = %d  delta = %d Time = %.3f\n',algorithm,t,nr,lambda,delta,toc);
         break;
     end
 
@@ -460,7 +458,7 @@ for t=1:Iterations
    
     %Update the Stat class
     if nargout >= 5
-        Stat(t) = StatClass( t,gather(nr),gather(nr_result),changed_dict_column_index,columnIndices,add_column_flag,length(Active_Columns),gather(delta),gather(lambda),toc );
+        Stat(t) = StatClass( t,gather(nr),changed_dict_column_index,columnIndices,add_column_flag,length(Active_Columns),gather(delta),gather(lambda),toc );
     end   
     
     if nargout >= 7
@@ -475,7 +473,7 @@ for t=1:Iterations
     
      %Stopping criteria : If the stopping criteria is reached, stop the program and return results
     if nr < Tolerence || length(Active_Columns) >= Active_Columns_Limit
-        fprintf('\n%s stopping criteria reached \n%s Finished at: norm(r) = %d lambda = %d  delta = %d tolerence = %d Time = %.3f\n',algorithm,algorithm,nr,lambda,delta,Tolerence,toc);
+        fprintf('\n%s stopping criteria reached \n%s Finished at: t = %d norm(r) = %d lambda = %d  delta = %d tolerence = %d Time = %.3f\n',algorithm,algorithm,t,nr,lambda,delta,Tolerence,toc);
         break;
     end
     
@@ -485,7 +483,6 @@ for t=1:Iterations
         Active_Columns = [Active_Columns; changed_dict_column_index];
         x = [x; 0];
         changed_active_column_index = length(x);
-        prev_t_added_dict_column_index = changed_dict_column_index;
         columnOperationStr = 'add';
         if nargout >= 7
             X_all(end,changed_active_column_index) = 0;
@@ -494,7 +491,6 @@ for t=1:Iterations
         changed_active_column_index = find(Active_Columns == changed_dict_column_index);
         x(changed_active_column_index)  = [];
         Active_Columns(changed_active_column_index) = [];
-        prev_t_added_dict_column_index = -1;
         columnOperationStr = 'remove';
         if nargout >= 7
             X_all(:,changed_active_column_index) = [];
@@ -528,6 +524,7 @@ for t=1:Iterations
 
     %Handle exception
     catch e
+        fprintf(2,'Exception Occured.\nException = %s \n', getReport(e));
         if t >1
             
             X = constructCoreTensor(Active_Columns, x, core_tensor_dimensions);
@@ -597,7 +594,7 @@ end
 
 if Debug_Mode && isdir(Path)
     
-    [c,r,v,dI,zI,GInv,delta,Ax,norm_r_result,norm_R]=gather(c,r,v,dI,zI,GInv,delta,Ax,norm_r_result,norm_R);
+    [c,r,v,dI,zI,GInv_Cell_Array,delta,Ax,norm_r_result,norm_R]=gather(c,r,v,dI,zI,GInv_Cell_Array,delta,Ax,norm_r_result,norm_R);
     [delta_plus_1,delta_plus_2,delta_minus]=gather(delta_plus_1,delta_plus_2,delta_minus);
     [min_delta_plus_1,min_delta_plus_2,min_delta_minus]=gather(min_delta_plus_1,min_delta_plus_2,min_delta_minus);
     [min_idx1,min_idx2,min_idx3,col_idx3]=gather(min_idx1,min_idx2,min_idx3,col_idx3);

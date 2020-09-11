@@ -1,6 +1,5 @@
 function [x] = gpuRound(x,decimals)
-%GPUROUND Summary of this function goes here
-%   Detailed explanation goes here
+%gpuRound v1.0
 
 if isa(x,'gpuArray')  
     x = round(x*10^decimals)*10^-decimals;
