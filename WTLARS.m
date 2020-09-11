@@ -1,5 +1,5 @@
 function varargout = WTLARS( Y, D_Cell_Array, w, Tolerence, varargin )
-%WTLARS v1.3.3-alpha
+%WTLARS v1.3.4-alpha
 %Author : Ishan Wickramasingha
 %Date : 2020/08/26
 %Modified Date : 2020/09/11
@@ -292,7 +292,7 @@ if nnz(X) > 0
     
     fprintf('Obtaining the inverse of the Gramian \n');
     GI = getWeightedGramian( D_Cell_Array, w, q, Active_Columns, GPU_Computing );
-    GInv = inv(GI);
+    GInv_Cell_Array{1} = inv(GI);
     
     clear GI
     
@@ -534,7 +534,7 @@ for t=1:Iterations
             
             if Debug_Mode && isdir(Path)
                 
-                [c,r,v,dI,zI,GInv,delta,Ax,norm_r_result,norm_R]=gather(c,r,v,dI,zI,GInv,delta,Ax,norm_r_result,norm_R);
+                [c,r,v,dI,zI,GInv_Cell_Array,delta,Ax,norm_r_result,norm_R]=gather(c,r,v,dI,zI,GInv_Cell_Array,delta,Ax,norm_r_result,norm_R);
                 [delta_plus_1,delta_plus_2,delta_minus]=gather(delta_plus_1,delta_plus_2,delta_minus);
                 [min_delta_plus_1,min_delta_plus_2,min_delta_minus]=gather(min_delta_plus_1,min_delta_plus_2,min_delta_minus);
                 [min_idx1,min_idx2,min_idx3,col_idx3]=gather(min_idx1,min_idx2,min_idx3,col_idx3);            
