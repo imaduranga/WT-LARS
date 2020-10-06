@@ -35,7 +35,7 @@ end
 
 qa = q(Active_Columns);
 
-parfor i = 1:length(Active_Columns)
+for i = 1:length(Active_Columns)
     
     factor_column_indices = getKroneckerFactorColumnIndices( kronMatrixCount, Active_Columns(i), dim_array );
     da = getKroneckerMatrixColumn( Factor_Matrices, factor_column_indices, GPU_Computing );  
@@ -43,7 +43,7 @@ parfor i = 1:length(Active_Columns)
     
     Wda = reshape(wda,Data_Tensor_Dimensions);
      
-    Gk = fullMultilinearProduct( Wda, D_Cell_Array, true, GPU_Computing );
+    Gk = fullMultilinearProduct( Wda, Factor_Matrices, true, GPU_Computing );
     g_k = q.*vec(Gk);
     
     gramian_row = g_k(Active_Columns);    

@@ -48,7 +48,7 @@ end
 fprintf('Running %s %s for %s until norm of the residual reach %d%%  \n\n', algorithm, product, data, Tolerence);
 fprintf('Dictionary = %s \n\n',str);
 
-[ X, Active_Columns, x, Parameters, Stat, Ax, X_all ] = WTLARS( Y, D_Cell_Array, w, Tolerence, X, L0_Mode, Mask_Type, GPU_Computing, Plot, Debug_Mode, result_path, Active_Columns_Limit, Iterations, Precision_factor );
+[ X, Active_Columns, x, Parameters, Stat, Ax ] = WTLARS( Y, D_Cell_Array, w, Tolerence, X, L0_Mode, Mask_Type, GPU_Computing, Plot, Debug_Mode, result_path, Active_Columns_Limit, Iterations, Precision_factor );
 
 %% Test
 

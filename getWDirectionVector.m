@@ -1,7 +1,8 @@
 function [ dI, GInv_Cell_Array] = getWDirectionVector( GInv_Cell_Array, zI, D_Cell_Array, w, q, Active_Columns, Add_Column_Flag, Changed_Column_Index, Changed_Active_Column_Index, Data_Tensor_Dimensions, Tensor_Dimensions, step_size, Precision_Order, GPU_Computing ) 
-%getWDirectionVector v1.1
+%getWDirectionVector v1.2
 %Author : Ishan Wickramsingha
 %Date : 2020/08/24
+%Modified Date : 2020/09/23
 
 %getDirectionVector function update GInv for column addition and removal
 %using the shur complements inversion formula for column addition and removal.
@@ -150,10 +151,12 @@ if Add_Column_Flag
         column_end_index = min(column_dims(i), N);
         row_end_index = min(min(row_dims(i), N),N - sum(row_dims(1:i-1)));
         
-        GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) = GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) + (alpha*b(start_index:end_index))*b(1:column_end_index)';        
-        
-        dI(start_index:end_index) = dI(start_index:end_index) + GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index)*zI(1: column_end_index);  
-        dI(1: column_dims(i) - row_dims(i)) = dI(1: column_dims(i) - row_dims(i)) + (zI(start_index:end_index)'*GInv_Cell_Array{i}(1:row_end_index, 1:column_dims(i) - row_dims(i)))';        
+        if row_end_index > 0        
+            GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) = GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) + (alpha*b(start_index:end_index))*b(1:column_end_index)';        
+
+            dI(start_index:end_index) = dI(start_index:end_index) + GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index)*zI(1: column_end_index);  
+            dI(1: column_dims(i) - row_dims(i)) = dI(1: column_dims(i) - row_dims(i)) + (zI(start_index:end_index)'*GInv_Cell_Array{i}(1:row_end_index, 1:column_dims(i) - row_dims(i)))';        
+        end
     end
     
 % Remove Column
@@ -204,11 +207,13 @@ else
             end_index = min(start_index + row_dims(i) - 1, N);
             column_end_index = min(column_dims(i), N);
             row_end_index = min(min(row_dims(i), N),N - sum(row_dims(1:i-1)));
+            
+            if row_end_index > 0
+                GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) = GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) + ((-1 / alpha)*ab(start_index:end_index))*ab(1:column_end_index)';        
 
-            GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) = GInv_Cell_Array{i}(1:row_end_index, 1:column_end_index) + ((-1 / alpha)*ab(start_index:end_index))*ab(1:column_end_index)';        
-
-            dI(start_index:end_index) = dI(start_index:end_index) + GInv_Cell_Array{i}(1:row_end_index, 1: column_end_index)*zI(1: column_end_index);  
-            dI(1: column_dims(i) - row_dims(i)) = dI(1: column_dims(i) - row_dims(i)) + (zI(start_index:end_index)'*GInv_Cell_Array{i}(1:row_end_index, 1:column_dims(i) - row_dims(i)))';        
+                dI(start_index:end_index) = dI(start_index:end_index) + GInv_Cell_Array{i}(1:row_end_index, 1: column_end_index)*zI(1: column_end_index);  
+                dI(1: column_dims(i) - row_dims(i)) = dI(1: column_dims(i) - row_dims(i)) + (zI(start_index:end_index)'*GInv_Cell_Array{i}(1:row_end_index, 1:column_dims(i) - row_dims(i)))';             
+            end
         end          
 end
 
